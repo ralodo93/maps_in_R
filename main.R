@@ -113,17 +113,23 @@ metadata = read.delim("metadata.csv")
 
 View(metadata)
 
-level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
-plot(level1_spain)
+level0_spain = gadm_sp_loadCountries("ESP", level=0, basefile="./")$spdf
+plot(level0_spain)
 spain_stations = metadata
 coordinates(spain_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
-projection(spain_stations) = projection(level1_spain) #Projection function is used to get or set the coordinate reference system
+projection(spain_stations) = projection(level0_spain) #Projection function is used to get or set the coordinate reference system
 
 ### Filtering points from two spdf
-res = over(level1_spain,spain_stations,returnList = TRUE) #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
+res = over(level0_spain,spain_stations,returnList = TRUE) #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
 res = do.call("rbind",res)
 spain_stations = unique(res$AirQualityStationEoICode)
 spain_stations = unique(metadata[metadata$AirQualityStationEoICode %in% spain_stations,c("Longitude","Latitude","AirQualityStationEoICode")])
+points(spain_stations,col=4,pch=16)
+
+
+level0_france = gadm_sp_loadCountries("FRA", level=0, basefile="./")$spdf
+map = bind(level0_france,level0_spain)
+plot(map)
 points(spain_stations,col=4,pch=16)
 
 
