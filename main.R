@@ -25,63 +25,59 @@ load.packages <- function(pkg){
 }
 
 ##### Install and loading the libraries that are going to be used #####
-check.packages(c("GADMTools","raster","RColorBrewer","ncdf4","dplyr","leaflet"))
+check.packages(c("GADMTools","raster","RColorBrewer","dplyr","leaflet","gdata","glue","stringr"))
 
 ##### GADM and GADMTools #####
 
 browseURL("https://gadm.org/") # Open GADM website where are located geographical data for the entire world
 
-?GADMTools #Instead of downloading handly the data, we will use the library named GADMTools
+?GADMTools #Instead of downloading the data by hand, we will use the library named GADMTools
 
 
 ### Basic operations ###
-level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf # gadm_sp_loadCountries download the information from a country and saves in a RDS
+level1_spain = gadm_sp_loadCountries(fileNames = "ESP", level=1, basefile="./")$spdf # gadm_sp_loadCountries download the information from a country and saves in a RDS
 
 #spdf is a OBJECT in R
 print(level1_spain)
 
+#spdf can be plotted
+plot(level1_spain)
+
+
+
+### Which data?
 data("GADM36SF") # With this dataframe we can check the country codes and the subregions
 View(GADM36SF)
 
 # Examples
-GADM36SF[GADM36SF$LEVEL_0 == "Spain",]  # ID is the code, Level 0 is the entire country, Level 1 are Autonomous Communities...
-GADM36SF[GADM36SF$LEVEL_0 == "United States",] # ID is the code, Level 0 is the entire country, Level 1 are States...
+print(GADM36SF[GADM36SF$LEVEL_0 == "Spain",])  # ID is the code, Level 0 is the entire country, Level 1 are Autonomous Communities...
+print(GADM36SF[GADM36SF$LEVEL_0 == "France",]) # ID is the code, Level 0 is the entire country, Level 1 are Region...
 
-level1_usa = gadm_sp_loadCountries("USA", level=1, basefile="./")$spdf # Download States coordinates from USA
 
+level1_france = gadm_sp_loadCountries("FRA", level=1, basefile="./")$spdf # Download States coordinates from USA
 level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf # Download Autonomous Communities coordinates from Spain
 
-plot(level1_usa) # Plot Spain
-
+### Plot the coords ###
+plot(level1_france) # Plot France
 plot(level1_spain) # Plot Spain
-text(getSpPPolygonsLabptSlots(level1_spain), # Get the centre point of each polygons
-     labels=as.character(level1_spain$NAME_1), 
-     cex=0.5, col="black")
 
-andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andalucía") # Subset Andalusia
+
+### Do subset of the data ###
+andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andaluc�a") # Subset Andalusia
 plot(andalusia) # Plot Andalusia
 
 
-cities <- data.frame(longitude = c(-3.35,-5.59), # Adding some points in the map
-                     latitude = c(37.10,37.23),
-                     monument = c("Granada","Sevilla"))
-points(cities,col=2) # Plot the points added
-
-
+### Obtain different levels of coords ###
 level4_spain = gadm_sp_loadCountries("ESP", level=4, basefile="./")$spdf # download Municipality data
-plot(level4_spain) # Plot Municipalities
-
-andalusia = subset(level4_spain,level4_spain$NAME_1 == "Andalucía") # Extract all municipalities from Andalusia
-plot(andalusia)
-
 granada = subset(level4_spain,level4_spain$NAME_2 == "Granada") # Extract all municipalities from the province of Granada
 plot(granada)
 
-granada = subset(level4_spain,level4_spain$NAME_4 %in% c("Granada","Huétor Vega","Armilla","Albolote","Maracena","Ogíjares","Atarfe")) #Extract a few the municipalities of Granada
+granada = subset(level4_spain,level4_spain$NAME_4 %in% 
+                   c("Granada","Hu�tor Vega","Armilla","Albolote","Maracena","Og�jares","Atarfe")) #Extract a few the municipalities of Granada
 plot(granada)
-text(getSpPPolygonsLabptSlots(granada), 
-     labels=as.character(granada$NAME_4), 
-     cex=0.5, col="black")
+
+
+
 
 
 ### Joining Objects ###
@@ -91,255 +87,180 @@ level0_portugal = gadm_sp_loadCountries("PRT", level=0, basefile="./")$spdf # Do
 GADM36SF[GADM36SF$LEVEL_0 == "France",]
 level2_france = gadm_sp_loadCountries("FRA", level=2, basefile="./")$spdf # Download Departments from France
 
-map = bind(level1_spain,level0_portugal,level2_france) #bind function is used to join spdf objects
+GADM36SF[GADM36SF$LEVEL_0 == "Italy",]
+level1_italy = gadm_sp_loadCountries("ITA", level=1, basefile="./")$spdf # Download Regions from Italy
 
-map@data$Regions = as.factor(map@data$NAME_0) #Convert countries in factors
-spplot(map, c("Regions"), col.regions=brewer.pal(3, "Set2"),par.settings = list(axis.line = list(col = "transparent"))) #Plot each country by a different color
+map = bind(level1_spain,level0_portugal,level2_france,level1_italy) #bind function is used to join spdf objects
 
+map@data$Country = as.factor(map@data$NAME_0) #Convert countries in factors
 
+palette(c("grey","red","green3","blue"))
 
-### Climatic Data ###
-browseURL("https://cds.climate.copernicus.eu/#!/home")
+dev.off()
+pdf("south_europe.pdf",width = 10,height = 10)
+plot(map,col=map@data$Country)
+dev.off()
 
-# system("python3 api_cds.py") # To use this pipeline you will need to be register in  cds.climate.copernicus and follow the next instructions
-
-browseURL("https://cds.climate.copernicus.eu/api-how-to")
-
-
-filename = "2021-01-01.nc"
-
-# ncdf4 library
-date = gsub(".nc","",filename)
-
-ncin <- nc_open(filename) # Open the file
-variables = names(ncin$var) #Get variables (temperature, precipitations and surface presure)
-
-fullDay = data.frame(Combs=0,lon=0,lat=0,variable=0,value=0) # Prepare a dataframe to collect the values for each variable
-fullDay=fullDay[0,]
-
-# Get some interesting variables
-time <- ncvar_get(ncin,"time")
-nt <- dim(time)
-lon <- ncvar_get(ncin,"longitude")
-nlon <- dim(lon)
-lat <- ncvar_get(ncin,"latitude")
-nlat <- dim(lat)
-
-var = variables[2]
-for (var in variables){ #For each variable
-  tmp_array <- ncvar_get(ncin,var) # Get the array
-  dlname <- ncatt_get(ncin,var,"long_name")$value
-  dunits <- ncatt_get(ncin,var,"units")
-  fillvalue <- ncatt_get(ncin,var,"_FillValue")
-  tmp_array[tmp_array==fillvalue$value] <- NA
-  tmp_vec_long <- as.vector(tmp_array)
-  tmp_mat <- matrix(tmp_vec_long, nrow=nlon*nlat, ncol=nt)
-  lonlat <- as.matrix(expand.grid(lon,lat))
-  tmp_df02 <- na.omit(data.frame(cbind(lonlat,tmp_mat)))
-  names(tmp_df02) <- c("longitude","latitude",as.character(seq(0,23)))
-  
-  
-  tmp_df02$Combs = paste0(round(tmp_df02$lat,1),"_",round(tmp_df02$lon,1))
-  tmp_df02$value <- apply(tmp_df02[3:26],1,mean)
-  tmp_df02 = as.data.frame(tmp_df02)
-  tmp_df02$variable = dlname
-  tmp_df02 = tmp_df02[,c("Combs","longitude","latitude","variable","value")]
-  
-  if (var %in% c("t2m")){
-    tmp_df02$value = tmp_df02$value - 273.15
-  }
-  fullDay = rbind(fullDay,tmp_df02)
-  
-}
-
-nc_close(ncin)
+system2('open', args = c('-a Preview.app', 'south_europe.pdf'), wait = FALSE)
 
 
-fullDay$Date = date
-variables = unique(fullDay$variable)
 
-for (var in variables){
-  subData = fullDay[fullDay$variable == var,]
-  print(head(subData))
-}
+### Air Quality Data ###
+browseURL("https://discomap.eea.europa.eu/map/fme/AirQualityExport.htm")
 
+download.file("https://discomap.eea.europa.eu/map/fme/metadata/PanEuropean_metadata.csv","metadata.csv")
+metadata = read.delim("metadata.csv")
 
-### Filtering coords ###
-
-combs = unique(fullDay[,c("Combs","longitude","latitude")])
-
-combsdf = combs
-combsdf$Region = ""
-combsdf$Country = ""
-
+View(metadata)
 
 level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
+plot(level1_spain)
+spain_stations = metadata
+coordinates(spain_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
+projection(spain_stations) = projection(level1_spain) #Projection function is used to get or set the coordinate reference system
 
-ccaas = level1_spain$NAME_1
-
-ccaa = ccaas[1]
-print(ccaa)
-
-spdf_reg = subset(level1_spain,level1_spain$NAME_1 == ccaa)
-
-combscoord = combs
-coordinates(combscoord) = ~ longitude + latitude
-projection(combscoord) = projection(spdf_reg)
-
-res = over(spdf_reg,combscoord,returnList = TRUE) # Check which coords from cds are located in the Andalusia area
-res = res[[1]]$Combs
-print(res) #Combs that are included in Andalusia area
-
-toyex = fullDay[fullDay$variable == "Leaf area index, high vegetation" & fullDay$Combs %in% res,c("longitude","latitude","value")]
-coordinates(toyex) = ~ longitude + latitude
-projection(toyex) = projection(spdf_reg)
-spplot(toyex, "value") # Plot the value of each coord
+### Filtering points from two spdf
+res = over(level1_spain,spain_stations,returnList = TRUE) #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
+res = do.call("rbind",res)
+spain_stations = unique(res$AirQualityStationEoICode)
+spain_stations = unique(metadata[metadata$AirQualityStationEoICode %in% spain_stations,c("Longitude","Latitude","AirQualityStationEoICode")])
+points(spain_stations,col=4,pch=16)
 
 
-spdf = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
-regions = spdf@data$NAME_1
-remove_regs = c()
-## Repeat the same with all regions in Spain
-for (region in regions){
-  spdf_reg = subset(spdf,spdf$NAME_1 == region)
-  combscoord = combs
-  coordinates(combscoord) = ~ longitude + latitude
-  projection(combscoord) = projection(spdf_reg)
-  res = over(spdf_reg,combscoord,returnList = TRUE)
-  res = res[[1]]$Combs
-  combsdf[combsdf$Combs %in% res,"Region"] = region
-  combsdf[combsdf$Combs %in% res,"Country"] = "Spain"
-  if (length(res) == 0){ #In case there are no climatic points in a region, we delete it (Ceuta and Melilla)
-    remove_regs = c(remove_regs,region)
+
+### Mapping stations to specific region ###
+level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
+regions = level1_spain@data$NAME_1
+region = regions[1]
+sub_level1_spain = subset(level1_spain,level1_spain$NAME_1 == region)
+region_stations = metadata
+coordinates(region_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
+projection(region_stations) = projection(sub_level1_spain) #Projection is used to get or set the coordinate reference system
+res = over(sub_level1_spain,region_stations,returnList = TRUE)[[1]] #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
+region_stations = unique(res$AirQualityStationEoICode)
+region_stations = unique(metadata[metadata$AirQualityStationEoICode %in% region_stations,c("Longitude","Latitude","AirQualityStationEoICode")])
+plot(level1_spain)
+points(region_stations,col=4,pch=16)
+plot(sub_level1_spain)
+points(region_stations,col=4,pch=16)
+
+
+### Define functions ###
+map_region = function(region,country,metadata,spdf){
+  sub_spdf = subset(spdf,spdf$NAME_1 == region)
+  region_stations = metadata
+  coordinates(region_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
+  projection(region_stations) = projection(sub_spdf) #Projection is used to get or set the coordinate reference system
+  res = over(sub_spdf,region_stations,returnList = TRUE)[[1]] #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
+  if (nrow(res) > 0){
+    region_stations = unique(res$AirQualityStationEoICode)
+    region_stations = unique(metadata[metadata$AirQualityStationEoICode %in% region_stations,c("AirQualityStationEoICode"),drop=F])
+    region_stations$Country = country
+    region_stations$Region = region
+  } else{
+    region_stations = NULL
   }
+  return(region_stations)
 }
 
-combsdf = combsdf[combsdf$Region != "",]
 
-print(sample_n(combsdf, 10))
+stations = data.frame(AirQualityStationEoICode="",Country="",Region="")[0,]
+for (country in c("Portugal","France","Italy","Spain")){
+  sp_code = GADM36SF[GADM36SF$LEVEL_0 == country,"ID"]
+  spdf = gadm_sp_loadCountries(sp_code,level = 1,basefile="./")$spdf
+  regions = spdf@data$NAME_1
+  res = lapply(regions,map_region,country,metadata,spdf)
+  region_stations = do.call("rbind", res)
+  stations = rbind(stations,region_stations[,colnames(stations)])
+}
 
-fullDay_merge = merge(fullDay[,c("Combs","variable","value","Date")],combsdf,by="Combs") #Merge fullDay and combsdf
+View(stations)
+
+
+### Download Data ###
+
+
+pollutants = list("CO"=10,"NO2"=8,"PM10"=5,"SO2"=1,"O3"=7)
+full_content = data.frame(Country="",Region="",Pollutant="",Date="",Value="")[0,]
+
+pollutant = 10
+
+dir.create("out_files")
+
+filename = "https://ereporting.blob.core.windows.net/downloadservice-last7days/ES/ES_10_12263_last7days.csv"
+download_and_collect_pollullant = function(filename,country,stations,full_content){
+  basename_file = basename(filename)
+  error = "error"
+  while (error == "error"){
+    error = tryCatch(download.file(filename,glue("out_files/{basename_file}")),
+                     error = function(e) "error")
+  }
+  content_file = read.csv(glue("out_files/{basename_file}"))
+  content_file = merge(content_file,stations ,by = "AirQualityStationEoICode")
+  content_file = content_file[,c("Country","Region","AirPollutant","DatetimeBegin","Concentration")]
+  colnames(content_file) = colnames(full_content)
+  content_file$Date = str_split_fixed(content_file$Date, " ", 2)[,1]
+  unlink(glue("out_files/{basename_file}"))
+  return(content_file)
+}
+
+country = "France"
+for (country in c("Portugal","France","Italy","Spain")){
+  iso_code = unique(metadata[metadata$AirQualityStationEoICode %in% stations[stations$Country==country,"AirQualityStationEoICode"],"Countrycode"])
+  error = "error"
+  while (error == "error"){
+    error = tryCatch(download.file(glue("https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode={iso_code}&CityName=&Pollutant={pollutant}&Year_from=2021&Year_to=2021&Station=&Samplingpoint=&Source=All&Output=HTML&UpdateDate=&TimeCoverage=Year"),"manifest.html"),
+                     error = function(e) "error")
+  }
+  page <- readLines("manifest.html")
+  content = page[!(page %in% c("</html>","<html>","</dl>","<dl>"))]
+  content = unlist(strsplit(content,'<dt><a href=\"'))
+  content = content[content != ""]
+  content = unlist(strsplit(content,'\" download=\"'))
+  content = content[startsWith(content,"https:")]
+  res = lapply(content,download_and_collect_pollullant,country,stations,full_content)
+  country_content = do.call("rbind",res)
+  
+  df = aggregate(x = country_content$Value, by = list(country_content$Region,country_content$Date), FUN = "mean",na.rm = TRUE)
+  colnames(df) = c("Region","Date","Value")
+  df$Pollutant = unique(country_content$Pollutant)
+  df$Country = country
+  df = df[,colnames(full_content)]
+  
+  sp_code = GADM36SF[GADM36SF$LEVEL_0 == country,"ID"]
+  spdf = gadm_sp_loadCountries(sp_code,level = 1,basefile="./")$spdf
+  regions = spdf@data$NAME_1
+  
+  for (region in regions){
+    if (!(region %in% df$Region)){
+      df = rbind(df,data.frame(Country=country,Region=region,Pollutant=NA,Date=unique(df$Date),Value=NA))
+    }
+  }
+  
+  full_content = rbind(full_content,df)
+}
+
+table(full_content$Date)
+
+dateDay = "2021-02-03"
+
+full_content_day = full_content[full_content$Date == dateDay,]
+
+
+level1_portugal = gadm_sp_loadCountries("PRT", level=1, basefile="./")$spdf
+level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
+level1_france = gadm_sp_loadCountries("FRA", level=1, basefile="./")$spdf
+level1_italy = gadm_sp_loadCountries("ITA", level=1, basefile="./")$spdf
+
+map = bind(level1_spain,level1_portugal,level1_france,level1_italy) #bind function is used to join spdf objects
+
+map@data <- merge(map@data, full_content_day,by.x="NAME_1",by.y="Region",sort = F)
 
 palette_custom = colorRampPalette(c("darkblue", "cyan","green", "orange","firebrick1"))(30)
 
-toShow = fullDay_merge[fullDay_merge$variable == "2 metre temperature" & fullDay_merge$Region == "País Vasco",] # Plot points from País Vasco
-coordinates(toShow) = ~ longitude + latitude
-projection(toShow) = projection(spdf)
-spplot(toShow, "value", main = "2 metre temperature", 
-       col.regions = palette_custom)
+dev.off()
+pdf("south_europe_CO_concentration.pdf",width = 10,height = 10)
+spplot(map, "Value", main = "CO concentration",col.regions=palette_custom)
+dev.off()
 
-
-toShow = fullDay_merge[fullDay_merge$variable == "2 metre temperature" & fullDay_merge$Country == "Spain",] # Plot points from the entire country
-coordinates(toShow) = ~ longitude + latitude
-projection(toShow) = projection(spdf)
-
-spplot(toShow, "value", main = "2 metre temperature", 
-       col.regions = palette_custom)
-
-spdf = subset(spdf,!(spdf$NAME_1 %in% remove_regs))
-
-# Instead of plotting each point, now we calculate the mean value by region
-toShow = fullDay_merge[fullDay_merge$variable == "2 metre temperature",]
-coordinates(toShow) = ~ longitude + latitude
-projection(toShow) = projection(spdf)
-
-meanVals = aggregate(value ~ Region+variable,data=fullDay_merge,mean) #Calculate the mean values by variable and region
-meanTemp = meanVals[meanVals$variable == "2 metre temperature",]
-rownames(meanTemp) = meanTemp$Region
-meanTemp = meanTemp[spdf@data$NAME_1,]
-
-map2 = spdf
-map2@data <- merge(map2@data, meanTemp,by.x="NAME_1",by.y="Region",sort = F) # Merge mean values
-spplot(map2, "value", main = "Mean Temperature",col.regions=palette_custom)
-
-meanVeg = meanVals[meanVals$variable == "Leaf area index, high vegetation",]
-rownames(meanVeg) = meanVeg$Region
-meanVeg = meanVeg[spdf@data$NAME_1,]
-
-map2 = spdf
-map2@data <- merge(map2@data, meanVeg,by.x="NAME_1",by.y="Region",sort = F) # Merge mean values
-spplot(map2, "value", main = "Mean High Vegetation Index",col.regions=palette_custom)
-
-########## Interactive Maps ##########
-
-map2 = spdf
-map2@data <- merge(map2@data, meanTemp,by.x="NAME_1",by.y="Region",sort = F)
-
-pal <- colorNumeric(
-  palette = "Blues",
-  domain = map2$value)
-
-map = leaflet(map2)
-map %>% addTiles() %>% addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
-                                   color = ~pal(value),
-                                   label=~stringr::str_c(
-                                     NAME_1, ' ---> ',
-                                     round(value,digits = 3)))
-
-
-
-
-############
-spdf_es = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
-spdf_fra = gadm_sp_loadCountries("FRA", level=1, basefile="./")$spdf
-spdf_por = gadm_sp_loadCountries("PRT", level=1, basefile="./")$spdf  
-
-map = bind(spdf_es,spdf_fra,spdf_por)
-
-combs = unique(fullDay[,c("Combs","longitude","latitude")])
-
-combsdf = combs
-combsdf$Region = ""
-combsdf$Country = ""
-
-for (code in c("FRA","PRT","ESP")){
-  spdf = gadm_sp_loadCountries(code, level=1, basefile="./")$spdf
-  regions = spdf@data$NAME_1
-  remove_regs = c()
-  ## Repeat the same with all regions in Spain
-  for (region in regions){
-    spdf_reg = subset(spdf,spdf$NAME_1 == region)
-    combscoord = combs
-    coordinates(combscoord) = ~ longitude + latitude
-    projection(combscoord) = projection(spdf_reg)
-    res = over(spdf_reg,combscoord,returnList = TRUE)
-    res = res[[1]]$Combs
-    combsdf[combsdf$Combs %in% res,"Region"] = region
-    combsdf[combsdf$Combs %in% res,"Country"] = code
-    if (length(res) == 0){ #In case there are no climatic points in a region, we delete it (Ceuta and Melilla)
-      remove_regs = c(remove_regs,region)
-    }
-  }
-}
-
-combsdf = combsdf[combsdf$Region != "",]
-
-fullDay_merge = merge(fullDay[,c("Combs","variable","value","Date")],combsdf,by="Combs") #Merge fullDay and combsdf
-print(head(fullDay_merge))
-
-
-spdf = subset(map,!(map$NAME_1 %in% remove_regs))
-
-meanVals = aggregate(value ~ Region+variable,data=fullDay_merge,mean) #Calculate the mean values by variable and region
-meanTemp = meanVals[meanVals$variable == "2 metre temperature",]
-rownames(meanTemp) = meanTemp$Region
-meanTemp = meanTemp[spdf@data$NAME_1,]
-
-map2 = spdf
-map2@data <- merge(map2@data, meanTemp,by.x="NAME_1",by.y="Region",sort = F) # Merge mean values
-spplot(map2, "value", main = "Mean Temperature",col.regions=palette_custom)
-
-## Interactive
-map2 = spdf
-map2@data <- merge(map2@data, meanTemp,by.x="NAME_1",by.y="Region",sort = F)
-
-pal <- colorNumeric(
-  palette = "Blues",
-  domain = map2$value)
-
-map = leaflet(map2)
-map %>% addTiles() %>% addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
-                                   color = ~pal(value),
-                                   label=~stringr::str_c(
-                                     NAME_1, ' ---> ',
-                                     round(value,digits = 3)))
+system2('open', args = c('-a Preview.app', 'south_europe_CO_concentration.pdf'), wait = FALSE)
