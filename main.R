@@ -25,7 +25,7 @@ load.packages <- function(pkg){
 }
 
 ##### Install and loading the libraries that are going to be used #####
-check.packages(c("GADMTools","raster","RColorBrewer","dplyr","leaflet","gdata","glue","stringr"))
+check.packages(c("GADMTools","raster","RColorBrewer","dplyr","gdata","glue","stringr","ggplot2","sf"))
 
 ##### GADM and GADMTools #####
 
@@ -35,13 +35,17 @@ browseURL("https://gadm.org/") # Open GADM website where are located geographica
 
 
 ### Basic operations ###
-level1_spain = gadm_sp_loadCountries(fileNames = "ESP", level=1, basefile="./")$spdf # gadm_sp_loadCountries download the information from a country and saves in a RDS
+level0_spain = gadm_sf_loadCountries(fileNames = "ESP", level=0, basefile="./")$sf # gadm_sf_loadCountries download the information from a country and saves in a RDS
 
-#spdf is a OBJECT in R
-print(level1_spain)
+#sf is a dataframe with coordenates in R
+print(level0_spain)
 
-#spdf can be plotted
-plot(level1_spain)
+#sf can be plotted with ggplot
+ggplot(data = level0_spain) +
+  geom_sf()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 
 
@@ -54,54 +58,71 @@ print(GADM36SF[GADM36SF$LEVEL_0 == "Spain",])  # ID is the code, Level 0 is the 
 print(GADM36SF[GADM36SF$LEVEL_0 == "France",]) # ID is the code, Level 0 is the entire country, Level 1 are Region...
 
 
-level1_france = gadm_sp_loadCountries("FRA", level=1, basefile="./")$spdf # Download States coordinates from USA
-level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf # Download Autonomous Communities coordinates from Spain
+level1_france = gadm_sf_loadCountries("FRA", level=1, basefile="./")$sf # Download Region coordinates from France
+level1_spain = gadm_sf_loadCountries("ESP", level=1, basefile="./")$sf # Download Autonomous Communities coordinates from Spain
 
 ### Plot the coords ###
-plot(level1_france) # Plot France
-plot(level1_spain) # Plot Spain
+ggplot(data = level1_france) +
+  geom_sf()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
+ggplot(data = level1_spain) +
+  geom_sf()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
+
+spain_and_france = rbind(level1_france,level1_spain)
+ggplot(data = spain_and_france) +
+  geom_sf(aes(fill=NAME_0))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 
 ### Do subset of the data ###
-andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andalucía") # Subset Andalusia
-plot(andalusia) # Plot Andalusia
+andalusia = subset(level1_spain,level1_spain$NAME_1 == "AndalucÃ­a") # Subset Andalusia
+ggplot(data = andalusia) +
+  geom_sf()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 
 ### Obtain different levels of coords ###
-level4_spain = gadm_sp_loadCountries("ESP", level=4, basefile="./")$spdf # download Municipality data
+level4_spain = gadm_sf_loadCountries("ESP", level=4, basefile="./")$sf # download Municipality data
 granada = subset(level4_spain,level4_spain$NAME_2 == "Granada") # Extract all municipalities from the province of Granada
-plot(granada)
+ggplot(data = granada) +
+  geom_sf()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 granada = subset(level4_spain,level4_spain$NAME_4 %in% 
-                   c("Granada","Huétor Vega","Armilla","Albolote","Maracena","Ogíjares","Atarfe")) #Extract a few the municipalities of Granada
-plot(granada)
+                   c("Granada","HuÃ©tor Vega","Armilla","Albolote","Maracena","OgÃ­jares","Atarfe")) #Extract a few the municipalities of Granada
+
+ggplot(data = granada) +
+  geom_sf()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+  
+
+granada <- cbind(granada, st_coordinates(st_centroid(granada$geometry)))
+ggplot(data = granada) +
+  geom_sf() +
+  geom_text(aes(x=X, y=Y, label=NAME_4),
+            color = "darkblue", check_overlap = FALSE)+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())+
+  xlab("")+ylab("")
 
 
 
-
-
-### Joining Objects ###
-GADM36SF[GADM36SF$LEVEL_0 == "Portugal",]
-level0_portugal = gadm_sp_loadCountries("PRT", level=0, basefile="./")$spdf # Download full country coords from Portugal
-
-GADM36SF[GADM36SF$LEVEL_0 == "France",]
-level2_france = gadm_sp_loadCountries("FRA", level=2, basefile="./")$spdf # Download Departments from France
-
-GADM36SF[GADM36SF$LEVEL_0 == "Italy",]
-level1_italy = gadm_sp_loadCountries("ITA", level=1, basefile="./")$spdf # Download Regions from Italy
-
-map = bind(level1_spain,level0_portugal,level2_france,level1_italy) #bind function is used to join spdf objects
-
-map@data$Country = as.factor(map@data$NAME_0) #Convert countries in factors
-
-palette(c("grey","red","green3","blue"))
-
-dev.off()
-pdf("south_europe.pdf",width = 10,height = 10)
-plot(map,col=map@data$Country)
-dev.off()
-
-system2('open', args = c('-a Preview.app', 'south_europe.pdf'), wait = FALSE)
 
 
 
@@ -113,51 +134,75 @@ metadata = read.delim("metadata.csv")
 
 View(metadata)
 
-level0_spain = gadm_sp_loadCountries("ESP", level=0, basefile="./")$spdf
-plot(level0_spain)
-spain_stations = metadata
-coordinates(spain_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
-projection(spain_stations) = projection(level0_spain) #Projection function is used to get or set the coordinate reference system
+level0_spain = gadm_sf_loadCountries("ESP", level=0, basefile="./")$sf
+metadata = st_as_sf(metadata, coords=c("Longitude","Latitude"))
+st_crs(metadata) = st_crs(level0_spain) #Set the coordinate reference system
+
+res = st_intersects(metadata,level0_spain)
+sel_logical = lengths(res) > 0
+spain_stations = metadata[sel_logical,]
+
+ggplot(data = level0_spain) +
+  geom_sf() +
+  geom_sf(data = spain_stations, size = 1, 
+             shape = 16, col = "darkred")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 ### Filtering points from two spdf
-res = over(level0_spain,spain_stations,returnList = TRUE) #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
-res = do.call("rbind",res)
-spain_stations = unique(res$AirQualityStationEoICode)
-spain_stations = unique(metadata[metadata$AirQualityStationEoICode %in% spain_stations,c("Longitude","Latitude","AirQualityStationEoICode")])
-points(spain_stations,col=4,pch=16)
+level0_spain = gadm_sf_loadCountries("ESP", level=0, basefile="./")$sf
+level0_france = gadm_sf_loadCountries("FRA", level=0, basefile="./")$sf
+
+spain_and_france = rbind(level0_spain,level0_france)
+
+ggplot(data = spain_and_france) +
+  geom_sf() +
+  geom_sf(data = spain_stations, size = 1, 
+          shape = 16, col = "darkred")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 
-level0_france = gadm_sp_loadCountries("FRA", level=0, basefile="./")$spdf
-map = bind(level0_france,level0_spain)
-plot(map)
-points(spain_stations,col=4,pch=16)
 
 
 
 ### Mapping stations to specific region ###
-level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
-regions = level1_spain@data$NAME_1
+level1_spain = gadm_sf_loadCountries("ESP", level=1, basefile="./")$sf
+regions = level1_spain$NAME_1
 region = regions[1]
 sub_level1_spain = subset(level1_spain,level1_spain$NAME_1 == region)
-region_stations = metadata
-coordinates(region_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
-projection(region_stations) = projection(sub_level1_spain) #Projection is used to get or set the coordinate reference system
-res = over(sub_level1_spain,region_stations,returnList = TRUE)[[1]] #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
-region_stations = unique(res$AirQualityStationEoICode)
-region_stations = unique(metadata[metadata$AirQualityStationEoICode %in% region_stations,c("Longitude","Latitude","AirQualityStationEoICode")])
-plot(level1_spain)
-points(region_stations,col=4,pch=16)
-plot(sub_level1_spain)
-points(region_stations,col=4,pch=16)
+st_crs(metadata) = st_crs(sub_level1_spain)
+res = st_intersects(metadata,sub_level1_spain)
+sel_logical = lengths(res) > 0
+andalucia_stations = metadata[sel_logical,]
 
+ggplot(data = level1_spain) +
+  geom_sf() +
+  geom_sf(data = andalucia_stations, size = 1, 
+          shape = 16, col = "darkred")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
+ggplot(data = sub_level1_spain) +
+  geom_sf() +
+  geom_sf(data = andalucia_stations, size = 1, 
+          shape = 16, col = "darkred")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
 
 ### Define functions ###
-map_region = function(region,country,metadata,spdf){
-  sub_spdf = subset(spdf,spdf$NAME_1 == region)
-  region_stations = metadata
-  coordinates(region_stations) = ~ Longitude + Latitude #coordinates function transform dataframe to spdf using the columns Longitude and Latitude
-  projection(region_stations) = projection(sub_spdf) #Projection is used to get or set the coordinate reference system
-  res = over(sub_spdf,region_stations,returnList = TRUE)[[1]] #over function is used to detect which spatialpoints (spain_stations) are located inside the spatialpolygons (level0_spain)
+map_region = function(region,country,metadata,sf){
+  sub_sf = subset(sf,sf$NAME_1 == region)
+  st_crs(metadata) = st_crs(sub_sf) #Projection is used to get or set the coordinate reference system
+  res = st_intersects(metadata,sub_sf)
+  sel_logical = lengths(res) > 0
+  res = metadata[sel_logical,]
+  
+  
   if (nrow(res) > 0){
     region_stations = unique(res$AirQualityStationEoICode)
     region_stations = unique(metadata[metadata$AirQualityStationEoICode %in% region_stations,c("AirQualityStationEoICode"),drop=F])
@@ -171,30 +216,45 @@ map_region = function(region,country,metadata,spdf){
 
 
 stations = data.frame(AirQualityStationEoICode="",Country="",Region="")[0,]
-for (country in c("Portugal","France","Italy","Spain")){
+
+map = NULL
+
+for (country in c("France","Italy","Spain")){
   sp_code = GADM36SF[GADM36SF$LEVEL_0 == country,"ID"]
-  spdf = gadm_sp_loadCountries(sp_code,level = 1,basefile="./")$spdf
-  regions = spdf@data$NAME_1
-  res = lapply(regions,map_region,country,metadata,spdf)
+  sf = gadm_sf_loadCountries(sp_code,level = 1,basefile="./")$sf
+  map = rbind(map,sf)
+  regions = sf$NAME_1
+  res = lapply(regions,map_region,country,metadata,sf)
   region_stations = do.call("rbind", res)
   stations = rbind(stations,region_stations[,colnames(stations)])
 }
 
 View(stations)
 
+ggplot(data = map) +
+  geom_sf() +
+  geom_sf(data = stations, size = 1, 
+          shape = 16, col = "darkred")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
+
+
+
 
 ### Download Data ###
 
 
 pollutants = list("CO"=10,"NO2"=8,"PM10"=5,"SO2"=1,"O3"=7)
-full_content = data.frame(Country="",Region="",Pollutant="",Date="",Value="")[0,]
+pollutant_df = data.frame(Country="",Region="",Pollutant="",Date="",Value="")[0,]
 
 pollutant = 10
 
 dir.create("out_files")
 
 filename = "https://ereporting.blob.core.windows.net/downloadservice-last7days/ES/ES_10_12263_last7days.csv"
-download_and_collect_pollullant = function(filename,country,stations,full_content){
+download_and_collect_pollullant = function(filename,country,stations,pollutant_df){
   basename_file = basename(filename)
   error = "error"
   while (error == "error"){
@@ -204,15 +264,15 @@ download_and_collect_pollullant = function(filename,country,stations,full_conten
   content_file = read.csv(glue("out_files/{basename_file}"))
   content_file = merge(content_file,stations ,by = "AirQualityStationEoICode")
   content_file = content_file[,c("Country","Region","AirPollutant","DatetimeBegin","Concentration")]
-  colnames(content_file) = colnames(full_content)
+  colnames(content_file) = colnames(pollutant_df)
   content_file$Date = str_split_fixed(content_file$Date, " ", 2)[,1]
   unlink(glue("out_files/{basename_file}"))
   return(content_file)
 }
 
 country = "France"
-for (country in c("Portugal","France","Italy","Spain")){
-  iso_code = unique(metadata[metadata$AirQualityStationEoICode %in% stations[stations$Country==country,"AirQualityStationEoICode"],"Countrycode"])
+for (country in c("France","Italy","Spain")){
+  iso_code = unique(metadata[metadata$AirQualityStationEoICode %in% stations[stations$Country==country,]$AirQualityStationEoICode,]$Countrycode)
   error = "error"
   while (error == "error"){
     error = tryCatch(download.file(glue("https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode={iso_code}&CityName=&Pollutant={pollutant}&Year_from=2021&Year_to=2021&Station=&Samplingpoint=&Source=All&Output=HTML&UpdateDate=&TimeCoverage=Year"),"manifest.html"),
@@ -224,18 +284,18 @@ for (country in c("Portugal","France","Italy","Spain")){
   content = content[content != ""]
   content = unlist(strsplit(content,'\" download=\"'))
   content = content[startsWith(content,"https:")]
-  res = lapply(content,download_and_collect_pollullant,country,stations,full_content)
+  res = lapply(content,download_and_collect_pollullant,country,stations,pollutant_df)
   country_content = do.call("rbind",res)
   
   df = aggregate(x = country_content$Value, by = list(country_content$Region,country_content$Date), FUN = "mean",na.rm = TRUE)
   colnames(df) = c("Region","Date","Value")
   df$Pollutant = unique(country_content$Pollutant)
   df$Country = country
-  df = df[,colnames(full_content)]
+  df = df[,colnames(pollutant_df)]
   
   sp_code = GADM36SF[GADM36SF$LEVEL_0 == country,"ID"]
-  spdf = gadm_sp_loadCountries(sp_code,level = 1,basefile="./")$spdf
-  regions = spdf@data$NAME_1
+  sf = gadm_sf_loadCountries(sp_code,level = 1,basefile="./")$sf
+  regions = sf$NAME_1
   
   for (region in regions){
     if (!(region %in% df$Region)){
@@ -243,30 +303,25 @@ for (country in c("Portugal","France","Italy","Spain")){
     }
   }
   
-  full_content = rbind(full_content,df)
+  pollutant_df = rbind(pollutant_df,df)
 }
 
-table(full_content$Date)
 
 dateDay = "2021-02-03"
 
-full_content_day = full_content[full_content$Date == dateDay,]
+pollutant_df_day = pollutant_df[pollutant_df$Date == dateDay,]
 
+level1_spain = gadm_sf_loadCountries("ESP", level=1, basefile="./")$sf
+level1_france = gadm_sf_loadCountries("FRA", level=1, basefile="./")$sf
+level1_italy = gadm_sf_loadCountries("ITA", level=1, basefile="./")$sf
 
-level1_portugal = gadm_sp_loadCountries("PRT", level=1, basefile="./")$spdf
-level1_spain = gadm_sp_loadCountries("ESP", level=1, basefile="./")$spdf
-level1_france = gadm_sp_loadCountries("FRA", level=1, basefile="./")$spdf
-level1_italy = gadm_sp_loadCountries("ITA", level=1, basefile="./")$spdf
+map = rbind(level1_spain,level1_france,level1_italy) #rbind function is used to join sf objects
 
-map = bind(level1_spain,level1_portugal,level1_france,level1_italy) #bind function is used to join spdf objects
+map <- merge(map, pollutant_df_day,by.x="NAME_1",by.y="Region",sort = F)
 
-map@data <- merge(map@data, full_content_day,by.x="NAME_1",by.y="Region",sort = F)
-
-palette_custom = colorRampPalette(c("darkblue", "cyan","green", "orange","firebrick1"))(30)
-
-dev.off()
-pdf("south_europe_CO_concentration.pdf",width = 10,height = 10)
-spplot(map, "Value", main = "CO concentration",col.regions=palette_custom)
-dev.off()
-
-system2('open', args = c('-a Preview.app', 'south_europe_CO_concentration.pdf'), wait = FALSE)
+ggplot(data = map) +
+  geom_sf(aes(fill=Value))+
+  scale_fill_gradient(low="yellow", high="red")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
