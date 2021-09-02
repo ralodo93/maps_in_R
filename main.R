@@ -84,7 +84,7 @@ ggplot(data = spain_and_france) +
 
 
 ### Do subset of the data ###
-andalusia = subset(level1_spain,level1_spain$NAME_1 == "AndalucÃ­a") # Subset Andalusia
+andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andalucía") # Subset Andalusia
 ggplot(data = andalusia) +
   geom_sf()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -102,7 +102,7 @@ ggplot(data = granada) +
         axis.ticks = element_blank())
 
 granada = subset(level4_spain,level4_spain$NAME_4 %in% 
-                   c("Granada","HuÃ©tor Vega","Armilla","Albolote","Maracena","OgÃ­jares","Atarfe")) #Extract a few the municipalities of Granada
+                   c("Granada","Huétor Vega","Armilla","Albolote","Maracena","Ogíjares","Atarfe")) #Extract a few the municipalities of Granada
 
 ggplot(data = granada) +
   geom_sf()+
@@ -121,9 +121,19 @@ ggplot(data = granada) +
         axis.ticks = element_blank())+
   xlab("")+ylab("")
 
+### Overlap points
+points_to_map = data.frame(Name=c("Pico Veleta","Alhambra","Catedral","Aeropuerto"),
+                           Longitude=c(-3.36,-3.58,-3.60,-3.78),
+                           Latitude=c(37.05,37.17,37.18,37.19))
 
+granada = subset(level4_spain,level4_spain$NAME_4 == "Granada") # Extract all municipalities from the province of Granada
+points_to_map = st_as_sf(points_to_map, coords=c("Longitude","Latitude"))
+st_crs(points_to_map) = st_crs(granada) #Set the coordinate reference system
 
-
+res = st_intersects(points_to_map,granada)
+sel_logical = lengths(res) > 0
+points_to_map = points_to_map[sel_logical,]
+print(points_to_map)
 
 
 ### Air Quality Data ###
@@ -142,6 +152,8 @@ res = st_intersects(metadata,level0_spain)
 sel_logical = lengths(res) > 0
 spain_stations = metadata[sel_logical,]
 
+print(head(spain_stations))
+
 ggplot(data = level0_spain) +
   geom_sf() +
   geom_sf(data = spain_stations, size = 1, 
@@ -150,7 +162,7 @@ ggplot(data = level0_spain) +
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())
 
-### Filtering points from two spdf
+
 level0_spain = gadm_sf_loadCountries("ESP", level=0, basefile="./")$sf
 level0_france = gadm_sf_loadCountries("FRA", level=0, basefile="./")$sf
 
