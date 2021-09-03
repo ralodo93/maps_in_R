@@ -34,13 +34,13 @@ browseURL("https://gadm.org/") # Open GADM website where are located geographica
 ?GADMTools #Instead of downloading the data by hand, we will use the library named GADMTools
 
 
-### Basic operations ###
+### Basic operations: Download File
 level0_spain = gadm_sf_loadCountries(fileNames = "ESP", level=0, basefile="./")$sf # gadm_sf_loadCountries download the information from a country and saves in a RDS
 
 #sf is a dataframe with coordenates in R
 print(level0_spain)
 
-#sf can be plotted with ggplot
+### Basic Operations: Plot the map
 ggplot(data = level0_spain) +
   geom_sf()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -83,8 +83,8 @@ ggplot(data = spain_and_france) +
         axis.ticks = element_blank())
 
 
-### Do subset of the data ###
-andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andalucía") # Subset Andalusia
+### Basic Operations: Do subset of the data ###
+andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andaluc?a") # Subset Andalusia
 ggplot(data = andalusia) +
   geom_sf()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -102,7 +102,7 @@ ggplot(data = granada) +
         axis.ticks = element_blank())
 
 granada = subset(level4_spain,level4_spain$NAME_4 %in% 
-                   c("Granada","Huétor Vega","Armilla","Albolote","Maracena","Ogíjares","Atarfe")) #Extract a few the municipalities of Granada
+                   c("Granada","Hu?tor Vega","Armilla","Albolote","Maracena","Og?jares","Atarfe")) #Extract a few the municipalities of Granada
 
 ggplot(data = granada) +
   geom_sf()+
@@ -121,7 +121,7 @@ ggplot(data = granada) +
         axis.ticks = element_blank())+
   xlab("")+ylab("")
 
-### Overlap points
+### Basic Operations: Overlap points
 points_to_map = data.frame(Name=c("Pico Veleta","Alhambra","Catedral","Aeropuerto"),
                            Longitude=c(-3.36,-3.58,-3.60,-3.78),
                            Latitude=c(37.05,37.17,37.18,37.19))
