@@ -1,3 +1,5 @@
+
+
 ##### Here there are a few functions that I always use to install and load libraries #####
 check.packages <- function(pkg){
   new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
@@ -25,7 +27,7 @@ load.packages <- function(pkg){
 }
 
 ##### Install and loading the libraries that are going to be used #####
-check.packages(c("GADMTools","raster","RColorBrewer","dplyr","gdata","glue","stringr","leaflet","ggplot2","sf"))
+check.packages(c("GADMTools","ggrepel","raster","RColorBrewer","dplyr","gdata","glue","stringr","ggplot2","sf"))
 
 ##### GADM and GADMTools #####
 
@@ -92,12 +94,20 @@ ggplot(data = spain_and_france) +
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())
 
+level1_italy = gadm_sf_loadCountries("ITA", level=1, basefile="./")$sf
+spain_and_france_and_italy = rbind(level1_france,level1_spain,level1_italy)
+ggplot(data = spain_and_france_and_italy) +
+  geom_sf(aes(fill=NAME_0))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank())
+
 
 #### Basic Operation: subset
 
 andalusia = subset(level1_spain,level1_spain$NAME_1 == "Andalucía") # Subset Andalusia
 ggplot(data = andalusia) +
-  geom_sf()+
+  geom_sf(fill="white")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())
@@ -105,10 +115,10 @@ ggplot(data = andalusia) +
 
 andalusia = subset(level2_spain,level2_spain$NAME_1 == "Andalucía") # Subset Andalusia
 ggplot(data = andalusia) +
-  geom_sf()+
+  geom_sf(aes(fill=andalusia$NAME_2))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
-        axis.ticks = element_blank())
+        axis.ticks = element_blank(),legend.position = "none")
 
 #### Basic Operation: Intersect
 
@@ -117,7 +127,14 @@ points_to_map = data.frame(Name=c("Pico Veleta","Alhambra","Catedral","Aeropuert
                            Latitude=c(37.05,37.17,37.18,37.19))
 
 level4_spain = gadm_sf_loadCountries("ESP", level=4, basefile="./")$sf
-granada_city = subset(level4_spain,level4_spain$NAME_4 == "Granada") # Extract all municipalities from the province of Granada
+
+ggplot(data = level4_spain) +
+  geom_sf(fill="white")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank(),legend.position = "none")
+
+granada_city = subset(level4_spain,level4_spain$NAME_4 == "Granada") # Extract the city of Granada
 
 points_to_map = st_as_sf(points_to_map, coords=c("Longitude","Latitude"))
 st_crs(points_to_map) = st_crs(granada_city) #Set the coordinate reference system
@@ -127,10 +144,10 @@ points_to_map$Ubication = ifelse(sel_logical,"Granada","Not Granada")
 print(points_to_map)
 
 ### Add points to map
-granada_prov = subset(level4_spain,level4_spain$NAME_2 == "Granada")
+granada_prov = subset(level4_spain,level4_spain$NAME_2 == "Granada") #Extract municipalities from the province of Granada
 
 ggplot(data = granada_prov) +
-  geom_sf()+
+  geom_sf(fill="white")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())
@@ -152,8 +169,8 @@ ggplot(data = granada_prov) +
   geom_sf(fill="white")+
   geom_sf(data = points_to_map, size = 1, 
           shape = 16, aes(col = Ubication))+
-  geom_text(data = points_to_map,aes(x=X,y=Y,label=Name),
-            color = "darkblue", check_overlap = FALSE)+
+  geom_text_repel(data = points_to_map,aes(x=X,y=Y,label=Name),
+            color = "darkblue")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())+
@@ -169,62 +186,81 @@ metadata = read.delim("metadata.csv")
 
 metadata = unique(metadata[,c("AirQualityStationEoICode","Longitude","Latitude")])
 
-#### Which station are located in Germany? Which station are located in Berlin?
+head(metadata,20)
+
+#### Which stations are located in Belgium?
 
 #### Select the sf DataFrame ###
-GADM36SF[GADM36SF$LEVEL_0 == "Germany",]
-level1_germany = gadm_sf_loadCountries(fileNames = "DEU",level = 1,basefile = "./")$sf
+GADM36SF[GADM36SF$LEVEL_0 == "Belgium",]
+level1_belgium = gadm_sf_loadCountries(fileNames = "BEL",level = 1,basefile = "./")$sf
 
-print(level1_germany)
+print(level1_belgium)
 
-### First, all stations from Germany
+### First, all stations from Belgium
 metadata = st_as_sf(metadata, coords=c("Longitude","Latitude"))
-st_crs(metadata) = st_crs(level1_germany) #Set the coordinate reference system
+st_crs(metadata) = st_crs(level1_belgium) #Set the coordinate reference system
 
-res = st_intersects(metadata,level1_germany)
+res = st_intersects(metadata,level1_belgium)
 sel_logical = lengths(res) > 0
-germany_stations = metadata[sel_logical,]
+belgium_stations = metadata[sel_logical,]
 
-print(head(germany_stations))
+print(head(belgium_stations))
 
-ggplot(data = level1_germany) +
+ggplot(data = level1_belgium) +
   geom_sf(fill="white") +
-  geom_sf(data = germany_stations, size = 1, 
+  geom_sf(data = belgium_stations, size = 1, 
           shape = 16, col = "darkred")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())
 
 
-### Filter to select only stations from Berlin
+### Which stations are located in Bruxelles?
 
-berlin_state = subset(level1_germany,level1_germany$NAME_1 == "Berlin")
+bruxelles_state = subset(level1_belgium,level1_belgium$NAME_1 == "Bruxelles")
 
-res = st_intersects(metadata,berlin_state)
+res = st_intersects(metadata,bruxelles_state)
 sel_logical = lengths(res) > 0
-berlin_stations = metadata[sel_logical,]
+bruxelles_stations = metadata[sel_logical,]
 
-ggplot(data = level1_germany) +
+ggplot(data = level1_belgium) +
   geom_sf(fill="white") +
-  geom_sf(data = berlin_stations, size = 1, 
+  geom_sf(data = bruxelles_stations, size = 1, 
           shape = 16, col = "darkred")+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(),axis.text.x = element_blank(), axis.text.y = element_blank(),
         axis.ticks = element_blank())
 
 
-#### Interactive Maps
-germany_stations = cbind(germany_stations,st_coordinates(germany_stations))
+#### Donwload Pollulant Data
 
-m <- leaflet(level1_germany) %>% 
-  addTiles() %>%
-  addMarkers(lng=germany_stations$X, lat=germany_stations$Y)
-m
+requestFile = "https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?CountryCode=BE&CityName=&Pollutant=10&Year_from=2021&Year_to=2021&Station=&Samplingpoint=&Source=All&Output=HTML&UpdateDate=&TimeCoverage=Year"
+download.file(requestFile,"requestFile.html")
 
+page <- readLines("requestFile.html")
+content = page[!(page %in% c("</html>","<html>","</dl>","<dl>"))]
+content = unlist(strsplit(content,'<dt><a href=\"'))
+content = content[content != ""]
+content = unlist(strsplit(content,'\" download=\"'))
+requestFile = content[startsWith(content,"https:")]
 
-berlin_stations = cbind(berlin_stations,st_coordinates(berlin_stations))
+bruxelles_climate_data = data.frame(Concentration=0,Date=0)[0,]
+i = 1
+for (i in 1:length(requestFile)){
+  download.file(requestFile[i],basename(requestFile[i]))
+  content = read.csv(file = requestFile[i])
+  content = content[,c("AirQualityStationEoICode","Concentration","DatetimeBegin")]
+  content$Date = str_split_fixed(content$DatetimeBegin, " ", 2)[,1]
+  if (unique(content$AirQualityStationEoICode) %in% bruxelles_stations$AirQualityStationEoICode){
+    bruxelles_climate_data = rbind(bruxelles_climate_data,content[,c("Concentration","Date")])
+  }
+  unlink(basename(requestFile[i]))
+}
 
-m <- leaflet(level1_germany) %>% 
-  addTiles() %>%
-  addMarkers(lng=berlin_stations$X, lat=berlin_stations$Y)
-m
+df = aggregate(x = bruxelles_climate_data$Concentration, by = list(bruxelles_climate_data$Date), FUN = "mean",na.rm = TRUE)
+colnames(df) = c("Date","Concentration")
+df$Date = as.Date(df$Date)
+
+ggplot(df, aes(x=Date, y=Concentration)) +
+  geom_line() + 
+  xlab("")
